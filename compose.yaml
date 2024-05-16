@@ -1,0 +1,36 @@
+services :
+  db:
+    image: postgres:16.0-alpine
+    ports:
+      - "5469:5432"
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 2s
+      timeout: 2s
+      retries: 5
+    networks:
+      - hp-net
+
+  backend:
+    container_name: hp-api
+    depends_on:
+      db:
+        condition: service_healthy
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - PG_HOST=db
+      - PG_PORT=5432
+    networks:
+      - hp-net
+
+networks:
+  hp-net:
