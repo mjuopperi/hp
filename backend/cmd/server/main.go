@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -19,6 +20,8 @@ func validateEnvVars() {
 		"POSTGRES_DB",
 		"PG_HOST",
 		"PG_PORT",
+		"GIN_HOST",
+		"GIN_PORT",
 	}
 	var missingVars []string
 
@@ -46,5 +49,6 @@ func main() {
 	r := gin.Default()
 	handlers.RegisterRoutes(r)
 
-	r.Run()
+	addr := fmt.Sprintf("%s:%s", os.Getenv("GIN_HOST"), os.Getenv("GIN_PORT"))
+	r.Run(addr)
 }
