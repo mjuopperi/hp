@@ -29,17 +29,14 @@ func AddDataPoint(ctx context.Context, dataPoint *models.DataPointIn) error {
 }
 
 func GetDataPoints(ctx context.Context, measurementType models.Measurement) ([]models.DataPoint, error) {
-	start := time.Now()
 	query := `select id, timestamp, measurement, value, unit from health_data where measurement = $1;`
 	rows, err := Pool.Query(ctx, query, measurementType)
-	fmt.Printf("Query: %v\n", time.Since(start))
 
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	start = time.Now()
 	dataPoints := make([]models.DataPoint, 0)
 	for rows.Next() {
 		var dp models.DataPoint
@@ -48,7 +45,6 @@ func GetDataPoints(ctx context.Context, measurementType models.Measurement) ([]m
 		}
 		dataPoints = append(dataPoints, dp)
 	}
-	fmt.Printf("Read: %v\n", time.Since(start))
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}

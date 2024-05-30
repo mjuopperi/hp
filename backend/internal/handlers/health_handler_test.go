@@ -63,6 +63,45 @@ func setupPostgres(t *testing.T) func() {
 	}
 }
 
+func TestGetValidUnits(t *testing.T) {
+	router := setupRouter()
+
+	req, _ := http.NewRequest(http.MethodGet, "/health/valid-units", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+
+	expectedBody := `{"dbp":["mmHg"],"sbp":["mmHg"],"weight":["kg","lbs"]}`
+	assert.JSONEq(t, expectedBody, resp.Body.String())
+}
+
+func TestGetDisplayNames(t *testing.T) {
+	router := setupRouter()
+
+	req, _ := http.NewRequest(http.MethodGet, "/health/display-names", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+
+	expectedBody := `{
+		"en": {
+			"weight": "Weight",
+			"sbp": "Systolic Blood Pressure",
+			"dbp": "Diastolic Blood Pressure"
+		},
+		"fi": {
+			"weight": "Paino",
+			"sbp": "Verenpaine, yläpaine",
+			"dbp": "Verenpaine, alapaine"
+		}
+	}`
+	assert.JSONEq(t, expectedBody, resp.Body.String())
+}
+
 func TestGetMeasurements(t *testing.T) {
 	router := setupRouter()
 	setupPostgres(t)
@@ -131,6 +170,36 @@ func TestPostMeasurement(t *testing.T) {
 	assert.Equal(t, 100.0, storedMeasurements[0].Value)
 	assert.Equal(t, "kg", storedMeasurements[0].Unit)
 	assert.WithinDuration(t, time.Now(), storedMeasurements[0].Timestamp, time.Second)
+}
+
+func TestPostMeasurementUnsupportedMeasurement(t *testing.T) {
+	router := setupRouter()
+	cleanup := setupPostgres(t)
+	defer cleanup()
+
+	body := models.DataPointIn{Measurement: "enlightenment", Value: 100, Unit: "lumen"}
+	jsonBody, _ := json.Marshal(body)
+	req, _ := http.NewRequest(http.MethodPost, "/health", bytes.NewBuffer(jsonBody))
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+}
+
+func TestPostMeasurementUnsupportedUnit(t *testing.T) {
+	router := setupRouter()
+	cleanup := setupPostgres(t)
+	defer cleanup()
+
+	body := models.DataPointIn{Measurement: "weight", Value: 100, Unit: "rock"}
+	jsonBody, _ := json.Marshal(body)
+	req, _ := http.NewRequest(http.MethodPost, "/health", bytes.NewBuffer(jsonBody))
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
 }
 
 func addMeasurements(t *testing.T, measurements []models.DataPoint) {
